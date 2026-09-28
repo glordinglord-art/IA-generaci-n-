@@ -14,12 +14,9 @@ Después, abre [http://localhost:3000](http://localhost:3000). Añade tu credenc
 
 ```env
 GEMINI_API_KEY=tu_clave_de_google_ai_studio
-GEMINI_MODEL=gemini-3.8-flash
-GEMINI_DEEP_MODEL=gemini-3.8-flash
-GEMINI_FAST_MODEL=gemini-3.5-flash-lite
 ```
 
-Equa usa en modo automático un modelo Flash Lite para preguntas sencillas y un Flash más potente para historia, comparaciones, países y estadísticas. Si el modelo principal falla por cuota, prueba el siguiente modelo disponible antes de activar el modo de demostración. Si `GEMINI_API_KEY` está vacío, la app sigue funcionando con respuestas educativas locales de demostración. En Vercel, configura las mismas variables en Project Settings → Environment Variables y vuelve a desplegar.
+Solo necesitas configurar `GEMINI_API_KEY`. Equa intenta primero el modelo más potente y, si tarda más de 10 segundos o falla por cuota, continúa automáticamente con `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite` y `gemini-3.1-flash-lite`. Si todos fallan, usa respuestas educativas locales de demostración. En Vercel, configura esta variable en Project Settings → Environment Variables y vuelve a desplegar.
 
 ## Arquitectura
 

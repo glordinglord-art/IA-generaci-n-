@@ -24,15 +24,23 @@ function isModelMode(value: unknown): value is ModelMode {
   return value === "auto" || value === "fast" || value === "deep";
 }
 
-function getModelCandidates(message: string, mode: ModelMode) {
-  const fastModel = process.env.GEMINI_FAST_MODEL || "gemini-3.5-flash-lite";
-  const deepModel = process.env.GEMINI_DEEP_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
+function getModelCandidates(mode: ModelMode) {
+  const fastModel = "gemini-3.5-flash-lite";
+  const deepModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const configuredModels = [
+    deepModel,
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    fastModel,
+    "gemini-3.1-flash-lite",
+  ];
+  const uniqueModels = [...new Set(configuredModels)];
 
-  if (mode === "fast") return [fastModel];
-  if (mode === "deep") return [deepModel];
+  if (mode === "fast") return [fastModel, "gemini-3.1-flash-lite"];
+  if (mode === "deep") return uniqueModels;
 
-  const needsDeepModel = /compar|ranking|rank|país|países|country|countries|histori|history|actual|current|latest|dato|data|estadíst|statistic|investig|research/i.test(message);
-  return needsDeepModel ? [deepModel, fastModel] : [fastModel, deepModel];
+  return uniqueModels;
 }
 
 function getHistory(value: unknown): ConversationMessage[] {
@@ -75,6 +83,7 @@ async function askGemini(
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
+      signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction(language) }] },
         contents,
@@ -121,7 +130,7 @@ export async function POST(request: Request) {
   }
 
   const modelMode = isModelMode(body.modelMode) ? body.modelMode : "auto";
-  const candidates = getModelCandidates(message, modelMode);
+  const candidates = getModelCandidates(modelMode);
   let lastError: unknown;
 
   for (const model of candidates) {
