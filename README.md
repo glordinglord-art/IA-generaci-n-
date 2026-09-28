@@ -16,7 +16,7 @@ Después, abre [http://localhost:3000](http://localhost:3000). Añade tu credenc
 GEMINI_API_KEY=tu_clave_de_google_ai_studio
 ```
 
-Solo necesitas configurar `GEMINI_API_KEY`. Equa intenta primero el modelo más potente y, si tarda más de 10 segundos o falla por cuota, continúa automáticamente con `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite` y `gemini-3.1-flash-lite`. Si todos fallan, usa respuestas educativas locales de demostración. En Vercel, configura esta variable en Project Settings → Environment Variables y vuelve a desplegar.
+Solo necesitas configurar `GEMINI_API_KEY`. Equa intenta primero el modelo más potente y, si tarda más de 7 segundos o falla por cuota, continúa automáticamente con `gemini-3.5-flash-lite` y `gemini-3.1-flash-lite`, que tienen mayor disponibilidad. Si todos fallan, usa respuestas educativas locales de demostración. En Vercel, configura esta variable en Project Settings → Environment Variables y vuelve a desplegar.
 
 ## Arquitectura
 

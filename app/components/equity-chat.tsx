@@ -36,6 +36,7 @@ const copy = {
       "Estoy aquí para ayudarte a entender la igualdad de género desde la historia, los datos y la vida cotidiana. ¿Por dónde empezamos?",
     now: "ahora",
     thinking: "pensando",
+    retrying: "probando otro modelo",
     gemini: "Respuesta de Gemini",
     demo: "Respuesta de demostración",
     disclaimer: "Equa puede equivocarse. Para cifras actuales, revisa siempre la fuente y el año.",
@@ -61,6 +62,7 @@ const copy = {
       "I’m here to help you understand gender equality through history, data and everyday life. Where should we begin?",
     now: "now",
     thinking: "thinking",
+    retrying: "trying another model",
     gemini: "Gemini response",
     demo: "Demo response",
     disclaimer: "Equa can make mistakes. For current figures, always check the source and year.",
@@ -105,6 +107,7 @@ export function EquityChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage("es")]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<"thinking" | "retrying">("thinking");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const t = copy[language];
 
@@ -144,6 +147,8 @@ export function EquityChat() {
     setMessages((current) => [...current, { id: `${Date.now()}-user`, role: "user", text: message }]);
     setInput("");
     setIsLoading(true);
+    setLoadingStage("thinking");
+    const retryTimer = window.setTimeout(() => setLoadingStage("retrying"), 6000);
 
     try {
       const response = await fetch("/api/chat", {
@@ -158,7 +163,9 @@ export function EquityChat() {
     } catch {
       setMessages((current) => [...current, { id: `${Date.now()}-error`, role: "assistant", text: t.error, source: "demo" }]);
     } finally {
+      window.clearTimeout(retryTimer);
       setIsLoading(false);
+      setLoadingStage("thinking");
     }
   }
 
@@ -211,7 +218,7 @@ export function EquityChat() {
               </div>
             </div>
           ))}
-          {isLoading && <div className="message-row"><span className="message-avatar"><Icon name="sparkle" size={14} /></span><div className="message-body"><div className="message-meta"><span>Equa</span><span>·</span><span>{t.thinking}</span></div><div className="message-bubble"><span className="typing-dots"><i /><i /><i /></span></div></div></div>}
+          {isLoading && <div className="message-row"><span className="message-avatar"><Icon name="sparkle" size={14} /></span><div className="message-body"><div className="message-meta"><span>Equa</span><span>·</span><span>{loadingStage === "thinking" ? t.thinking : t.retrying}</span></div><div className="message-bubble"><span className="typing-dots"><i /><i /><i /></span></div></div></div>}
           <div ref={messagesEndRef} />
         </div>
 

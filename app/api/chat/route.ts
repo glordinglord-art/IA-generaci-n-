@@ -12,6 +12,7 @@ type ModelMode = "auto" | "fast" | "deep";
 
 type GeminiResponse = {
   candidates?: Array<{
+    finishReason?: string;
     content?: { parts?: Array<{ text?: string }> };
   }>;
 };
@@ -27,20 +28,30 @@ function isModelMode(value: unknown): value is ModelMode {
 function getModelCandidates(mode: ModelMode) {
   const fastModel = "gemini-3.5-flash-lite";
   const deepModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const configuredModels = [
-    deepModel,
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    fastModel,
-    "gemini-3.1-flash-lite",
-  ];
-  const uniqueModels = [...new Set(configuredModels)];
+  const reliableFallback = "gemini-3.1-flash-lite";
 
   if (mode === "fast") return [fastModel, "gemini-3.1-flash-lite"];
-  if (mode === "deep") return uniqueModels;
+  if (mode === "deep") return [deepModel, fastModel, reliableFallback];
 
-  return uniqueModels;
+  return [deepModel, fastModel, reliableFallback];
+}
+
+function needsDetailedAnswer(message: string) {
+  return message.length > 45 || /histori|hito|país|países|country|countries|compar|ranking|brecha|desigual|estadíst|statistic|explica|explain|profund|deep|cuánt|how long/i.test(message);
+}
+
+function cleanAnswer(answer: string) {
+  return answer
+    .replace(/^\s*(?:output\s*\)?\s*:\s*\*\*|produce\s+the\s+formatted\s+(?:spanish|english)\s+response\.?\s*)/i, "")
+    .trim();
+}
+
+function isUsableAnswer(answer: string, message: string, finishReason?: string) {
+  const hasInternalLeak = /output\s*\)?\s*:\s*\*\*|produce\s+the\s+formatted|system\s+instruction|internal\s+prompt/i.test(answer);
+  const minimumLength = needsDetailedAnswer(message) ? 300 : 100;
+  const endsCleanly = /[.!?…:)\]»”"]$/.test(answer);
+  const hasUnexpectedFinish = Boolean(finishReason && finishReason !== "STOP");
+  return !hasInternalLeak && answer.length >= minimumLength && endsCleanly && !hasUnexpectedFinish;
 }
 
 function getHistory(value: unknown): ConversationMessage[] {
@@ -83,13 +94,13 @@ async function askGemini(
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(7000),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemInstruction(language) }] },
         contents,
         generationConfig: {
-          temperature: 0.55,
-          maxOutputTokens: 700,
+          temperature: 0.45,
+          maxOutputTokens: 1400,
         },
       }),
     },
@@ -98,13 +109,16 @@ async function askGemini(
   if (!response.ok) throw new Error(`Gemini request failed with ${response.status}`);
 
   const data = (await response.json()) as GeminiResponse;
-  const answer = data.candidates?.[0]?.content?.parts
+  const candidate = data.candidates?.[0];
+  const answer = candidate?.content?.parts
     ?.map((part) => part.text || "")
     .join("")
     .trim();
 
   if (!answer) throw new Error("Gemini returned an empty answer");
-  return answer;
+  const cleanedAnswer = cleanAnswer(answer);
+  if (!isUsableAnswer(cleanedAnswer, message, candidate?.finishReason)) throw new Error(`Gemini returned an incomplete answer from ${model}`);
+  return cleanedAnswer;
 }
 
 export async function POST(request: Request) {
